@@ -168,7 +168,10 @@ class Converter:
         elif self.in_file.endswith(('.tif', '.tiff', '.img', '.dt0', '.dt1', '.dt2')):
             return raster.raster_to_utm(self.in_file, self.utm_df)
         elif self.in_file.endswith(('.ntf', '.nitf', '.r0')):
-            return 'NITF'
+            try:
+                return raster.raster_to_utm(self.in_file, self.utm_df)
+            except Exception:
+                pass
         else:
             """
             Check if it's a container.  Search pattern finds paths
