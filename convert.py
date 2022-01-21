@@ -261,6 +261,23 @@ class Converter:
 
         return proj_layers
 
+    def gpkg_lyr_to_utm(self):
+        """
+        This method handles directly expressed GeoPackage layers in the
+        format of /path/to/geopackage_file.gpkg/geopackage_layer
+        """
+        gpkg, gpkg_layer = os.path.split(self.in_file)
+        gdf = gpd.read_file(gpkg, driver="GPKG", layer=gpkg_layer)
+        if gdf.crs is not None:
+            gdf.to_crs(epsg=4326)
+
+            c = Converter._get_centroid_as_gdf(gdf, gpkg_layer)
+            p = Converter._spatial_join_by_centroid(self.utm_df, c)
+
+            proj_layer = gdf.to_crs(epsg=int(p['EPSG'].values[0]))
+
+            proj_layer.to_file(gpkg, layer=f"{gpkg_layer}_UTM")
+            return proj_layer
 
     @staticmethod
     def _get_centroid_as_gdf(lyr: gpd.GeoDataFrame, lyrname: str):
