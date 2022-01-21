@@ -175,13 +175,10 @@ class Converter:
             issued as Windows or Unix style and breaks them into the
             container and layer.
             """
-            gpkg_search = re.search(r"^(.+\.gpkg)[/\\](\w+)")
-            gdb_search = re.search(r"^(.+\.gdb)[/\\](\w+)")
-
-            if re.search(r"^.+\.gpkg[/\\]\w+"):  # It's a geopackage layer
-                return 'GeoPackageLayer'
+            if re.search(r"^.+\.gpkg[/\\]\w+"):  # It's a GeoPackage layer
+                return self.db_lyr_to_utm()
             elif re.search(r"^.+\.gdb[/\\]\w+"):  # It's an Esri FeatureClass
-                return 'EsriFeatureClass'
+                return self.db_lyr_to_utm(gpkg=False)
 
 
     def shp_to_utm(self):
@@ -261,22 +258,35 @@ class Converter:
 
         return proj_layers
 
-    def gpkg_lyr_to_utm(self):
+    def db_lyr_to_utm(self, gpkg=True):
         """
-        This method handles directly expressed GeoPackage layers in the
-        format of /path/to/geopackage_file.gpkg/geopackage_layer
+        This method handles directly expressed layers in the format of
+
+            /path/to/geopackage_file.gpkg/geopackage_layer -OR-
+            /path/to/filegeodatabase.gdb/feature_class
+
+        If the input is a File Geodatabase (gpkg=False), the output will be
+        a GeoPackage with the same name as the File Geodatabase, stored in
+        the same path, due to the limitations in writing out to File
+        Geodatabases with non-Esri software.
         """
-        gpkg, gpkg_layer = os.path.split(self.in_file)
-        gdf = gpd.read_file(gpkg, driver="GPKG", layer=gpkg_layer)
+        db, db_layer = os.path.split(self.in_file)
+        if gpkg:
+            gdf = gpd.read_file(db, driver="GPKG", layer=db_layer)
+        else:
+            gdf = gpd.read_file(db_layer, driver="FileGDB", layer=db_layer)
         if gdf.crs is not None:
             gdf.to_crs(epsg=4326)
 
-            c = Converter._get_centroid_as_gdf(gdf, gpkg_layer)
+            c = Converter._get_centroid_as_gdf(gdf, db_layer)
             p = Converter._spatial_join_by_centroid(self.utm_df, c)
 
             proj_layer = gdf.to_crs(epsg=int(p['EPSG'].values[0]))
-
-            proj_layer.to_file(gpkg, layer=f"{gpkg_layer}_UTM")
+            if gpkg:
+                proj_layer.to_file(gpkg, layer=f"{db_layer}_UTM")
+            else:
+                out_file = db.replace('.gdb', '.gpkg')
+                proj_layer.to_file(out_file, layer=f"{db_layer}_UTM")
             return proj_layer
 
     @staticmethod
