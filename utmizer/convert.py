@@ -314,7 +314,7 @@ class Converter:
 
 if __name__ == '__main__':
 
-    datapath = "C:/Users/ericc/gis_data"
+    datapath = "C:/gis_data"
 
     testshp = os.path.join(datapath, "georgia.shp")
     testgpkg = os.path.join(datapath, "Tabriz.gpkg")
